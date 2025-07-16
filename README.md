@@ -18,7 +18,7 @@ VEPmcp is a Model Context Protocol (MCP) server for the [Ensembl Variant Effect 
 
 ```bash
 pip install -e .
-# or, when available:
+# or, when available (soon):
 pip install VEPmcp
 ```
 
