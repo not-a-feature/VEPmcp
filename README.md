@@ -105,6 +105,16 @@ Prompt your MCP client with:
 - `VEPmcp --test-connection` — check API connectivity
 - `VEPmcp --test-mode` — run server in test mode
 - `python run_tests.py --mode all --verbose` — run all unit/integration tests
+- `python run_tests.py --mode ci` — run CI pipeline (linting + type checking + unit tests)
+
+### Continuous Integration
+
+This project uses GitHub Actions for automated testing on every pull request. The CI pipeline includes:
+- Linting with Ruff
+- Type checking with MyPy  
+- Unit and integration tests across Python 3.9-3.13
+- Security scanning
+- Code coverage reporting
 
 ---
 
@@ -120,9 +130,24 @@ Prompt your MCP client with:
 
 ```bash
 pip install -e .[dev]
-pytest
-black vep_mcp/
-mypy vep_mcp/
+python run_tests.py --mode ci  # Run linting, type checking, and unit tests
+python run_tests.py --mode all --verbose  # Run all tests including integration
+```
+
+### Local Testing Commands
+
+```bash
+# Linting and formatting
+python run_tests.py --mode lint
+
+# Type checking  
+python run_tests.py --mode type
+
+# Unit tests only
+python run_tests.py --mode unit --verbose
+
+# Integration tests (requires internet)
+python run_tests.py --mode integration --verbose
 ```
 
 ---

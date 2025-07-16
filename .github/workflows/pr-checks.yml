@@ -1,0 +1,68 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quick-checks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,test]"
+
+    - name: Run CI pipeline (linting, type checking, unit tests)
+      run: |
+        python run_tests.py --mode ci --verbose --coverage --fail-fast
+
+    - name: Test package installation
+      run: |
+        pip install -e .
+        python -c "import vep_mcp; print('✓ Package imports successfully')"
+        VEPmcp --help
+
+  comprehensive-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12", "3.13"]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,test]"
+
+    - name: Run all tests
+      run: |
+        python run_tests.py --mode all --verbose --fail-fast
+      continue-on-error: ${{ matrix.python-version != '3.12' }}  # Only fail on primary Python version
+
+    - name: Upload coverage (Python 3.12 only)
+      if: matrix.python-version == '3.12'
+      uses: codecov/codecov-action@v3
+      with:
+        fail_ci_if_error: false
