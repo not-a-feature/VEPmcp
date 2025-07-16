@@ -348,12 +348,20 @@ class MCPServer:
             {
                 "name": "get_vep_species",
                 "description": "Get list of available species for VEP annotation",
-                "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": False,
+                },
             },
             {
                 "name": "get_consequence_types",
                 "description": "Get available VEP consequence types and descriptions",
-                "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": False,
+                },
             },
             {
                 "name": "get_assembly_info",

@@ -38,14 +38,21 @@ For more information, visit: https://github.com/not-a-feature/VEPmcp
     parser.add_argument("--version", action="version", version="VEPmcp 0.1.0")
     parser.add_argument("--config", help="Path to configuration file")
     parser.add_argument(
-        "--timeout", type=float, default=30.0, help="Request timeout in seconds (default: 30.0)"
+        "--timeout",
+        type=float,
+        default=30.0,
+        help="Request timeout in seconds (default: 30.0)",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     parser.add_argument(
-        "--test-connection", action="store_true", help="Test connection to Ensembl API and exit"
+        "--test-connection",
+        action="store_true",
+        help="Test connection to Ensembl API and exit",
     )
     parser.add_argument(
-        "--test-mode", action="store_true", help="Run server in test mode with sample requests"
+        "--test-mode",
+        action="store_true",
+        help="Run server in test mode with sample requests",
     )
 
     return parser

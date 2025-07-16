@@ -37,7 +37,11 @@ class Config:
 class RateLimiter:
     """Rate limiter for Ensembl API requests (15 requests/second)"""
 
-    def __init__(self, max_requests: int = RATE_LIMIT_REQUESTS, window: float = RATE_LIMIT_WINDOW):
+    def __init__(
+        self,
+        max_requests: int = RATE_LIMIT_REQUESTS,
+        window: float = RATE_LIMIT_WINDOW,
+    ):
         self.max_requests = max_requests
         self.window = window
         self.requests: List[float] = []
