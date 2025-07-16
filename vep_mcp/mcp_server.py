@@ -5,9 +5,9 @@ MCP Server implementation for VEPmcp.
 import json
 import sys
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from .bridge import Bridge, Config
+from .bridge import Bridge
 
 # Configure logging
 logger = logging.getLogger("vep-mcp")
@@ -16,12 +16,12 @@ logger = logging.getLogger("vep-mcp")
 class MCPServer:
     """MCP Server for VEPmcp."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the MCP server."""
         self.bridge = Bridge()
         self.request_id = 0
 
-    def send_response(self, result: Any, error: Optional[str] = None):
+    def send_response(self, result: Any, error: Optional[str] = None) -> None:
         """Send a JSON-RPC response."""
         response = {
             "jsonrpc": "2.0",
@@ -36,7 +36,7 @@ class MCPServer:
         print(json.dumps(response))
         sys.stdout.flush()
 
-    async def handle_request(self, request: Dict[str, Any]):
+    async def handle_request(self, request: Dict[str, Any]) -> None:
         """Handle a JSON-RPC request."""
         method = request.get("method")
         params = request.get("params", {})
@@ -55,7 +55,7 @@ class MCPServer:
             logger.error(f"Error handling request {method}: {str(e)}")
             self.send_response(None, str(e))
 
-    def handle_list_tools(self):
+    def handle_list_tools(self) -> None:
         """Handle tools/list request."""
         # Common VEP parameter schema for reuse
         common_vep_params = {
@@ -364,7 +364,7 @@ class MCPServer:
 
         self.send_response({"tools": tools})
 
-    def handle_initialize(self, params: Dict[str, Any]):
+    def handle_initialize(self, params: Dict[str, Any]) -> None:
         """Handle initialize request."""
         response = {
             "protocolVersion": "2024-11-05",
@@ -373,7 +373,7 @@ class MCPServer:
         }
         self.send_response(response)
 
-    async def handle_call_tool(self, params: Dict[str, Any]):
+    async def handle_call_tool(self, params: Dict[str, Any]) -> None:
         """Handle tools/call request."""
         name = params.get("name")
         arguments = params.get("arguments", {})
@@ -488,11 +488,9 @@ class MCPServer:
             logger.error(f"Error calling tool {name}: {str(e)}")
             self.send_response(None, str(e))
 
-    async def run(self):
+    async def run(self) -> None:
         """Main event loop for the MCP server."""
         print("VEPmcp MCP server ready...", file=sys.stderr)
-
-        import asyncio
         import platform
 
         try:
@@ -506,7 +504,7 @@ class MCPServer:
             logger.error(f"Server error: {str(e)}")
             raise
 
-    async def _run_windows(self):
+    async def _run_windows(self) -> None:
         """Windows-specific implementation for reading stdin."""
         import asyncio
         import sys
@@ -522,7 +520,7 @@ class MCPServer:
         # Use a simpler approach for Windows
         loop = asyncio.get_event_loop()
 
-        def read_line():
+        def read_line() -> Optional[str]:
             try:
                 line = sys.stdin.readline()
                 return line.strip() if line else None
@@ -555,11 +553,11 @@ class MCPServer:
                 logger.error(f"Error reading input: {str(e)}")
                 break
 
-    async def _run_unix(self):
+    async def _run_unix(self) -> None:
         """Unix-like systems implementation for reading stdin."""
         import asyncio
 
-        async def read_stdin():
+        async def read_stdin() -> asyncio.StreamReader:
             loop = asyncio.get_event_loop()
             reader = asyncio.StreamReader()
             protocol = asyncio.StreamReaderProtocol(reader)
@@ -570,12 +568,12 @@ class MCPServer:
             reader = await read_stdin()
 
             async for line in reader:
-                line = line.decode().strip()
-                if not line:
+                line_str = line.decode().strip()
+                if not line_str:
                     continue
 
                 try:
-                    request = json.loads(line)
+                    request = json.loads(line_str)
                     await self.handle_request(request)
                 except json.JSONDecodeError as e:
                     print(f"Bad JSON from host: {e}", file=sys.stderr)

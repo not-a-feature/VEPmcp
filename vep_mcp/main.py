@@ -8,7 +8,7 @@ from .cli import main as cli_main
 __version__ = "0.1.0"
 
 
-def main():
+def main() -> int:
     """Main entry point for CLI."""
     return cli_main()
 

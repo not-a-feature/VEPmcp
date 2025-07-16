@@ -6,7 +6,7 @@ import asyncio
 import logging
 import re
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, cast
 from urllib.parse import urlencode
 from dataclasses import dataclass
 import aiohttp
@@ -40,9 +40,9 @@ class RateLimiter:
     def __init__(self, max_requests: int = RATE_LIMIT_REQUESTS, window: float = RATE_LIMIT_WINDOW):
         self.max_requests = max_requests
         self.window = window
-        self.requests = []
+        self.requests: List[float] = []
 
-    async def acquire(self):
+    async def acquire(self) -> None:
         """Acquire a rate limit slot, waiting if necessary"""
         now = time.time()
 
@@ -55,7 +55,8 @@ class RateLimiter:
             if sleep_time > 0:
                 logger.debug(f"Rate limit reached, sleeping for {sleep_time:.2f}s")
                 await asyncio.sleep(sleep_time)
-                return await self.acquire()  # Recursive call after sleeping
+                await self.acquire()  # Recursive call after sleeping
+                return
 
         # Add this request to the list
         self.requests.append(now)
@@ -159,7 +160,7 @@ class Bridge:
     This class provides the main interface for interacting with the VEP API.
     """
 
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(self, config: Optional[Config] = None) -> None:
         """
         Initialize the bridge.
 
@@ -173,18 +174,18 @@ class Bridge:
         )
         self.validator = VEPValidator()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "Bridge":
         self.session = aiohttp.ClientSession(
             headers={"Content-Type": "application/json"},
             timeout=aiohttp.ClientTimeout(total=self.config.timeout),
         )
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if self.session:
             await self.session.close()
 
-    async def _make_request(self, method: str, url: str, **kwargs) -> Dict[str, Any]:
+    async def _make_request(self, method: str, url: str, **kwargs: Any) -> Dict[str, Any]:
         """Make HTTP request with error handling and rate limiting"""
         if not self.session:
             raise RuntimeError("Bridge session not initialized")
@@ -215,14 +216,14 @@ class Bridge:
                         message=f"HTTP {response.status}: {error_text}",
                     )
 
-                return await response.json()
+                return cast(Dict[str, Any], await response.json())
         except Exception as e:
             logger.error(f"Request failed: {method} {url} - {str(e)}")
             raise
 
-    def _build_query_params(self, **options) -> str:
+    def _build_query_params(self, **options: Any) -> str:
         """Build query parameter string for VEP requests with comprehensive parameter support"""
-        params = {}
+        params: Dict[str, str] = {}
 
         # Core VEP boolean parameters
         boolean_params = [
@@ -308,7 +309,12 @@ class Bridge:
         return urlencode(params) if params else ""
 
     # VEP HGVS Endpoints
-    async def vep_hgvs_single(self, species: str, hgvs_notation: str, **options) -> Dict[str, Any]:
+    async def vep_hgvs_single(
+        self,
+        species: str,
+        hgvs_notation: str,
+        **options: Any,
+    ) -> Dict[str, Any]:
         """GET vep/{species}/hgvs/{hgvs_notation} - Single HGVS annotation"""
         # Validate inputs
         species = self.validator.validate_species(species)
@@ -322,7 +328,7 @@ class Bridge:
         return await self._make_request("GET", url)
 
     async def vep_hgvs_batch(
-        self, species: str, hgvs_notations: List[str], **options
+        self, species: str, hgvs_notations: List[str], **options: Any
     ) -> Dict[str, Any]:
         """POST vep/{species}/hgvs - Batch HGVS annotation"""
         # Validate inputs
@@ -341,7 +347,12 @@ class Bridge:
         return await self._make_request("POST", url, json=payload)
 
     # VEP ID Endpoints
-    async def vep_id_single(self, species: str, variant_id: str, **options) -> Dict[str, Any]:
+    async def vep_id_single(
+        self,
+        species: str,
+        variant_id: str,
+        **options: Any,
+    ) -> Dict[str, Any]:
         """GET vep/{species}/id/{id} - Single variant ID annotation"""
         # Validate inputs
         species = self.validator.validate_species(species)
@@ -354,7 +365,12 @@ class Bridge:
 
         return await self._make_request("GET", url)
 
-    async def vep_id_batch(self, species: str, variant_ids: List[str], **options) -> Dict[str, Any]:
+    async def vep_id_batch(
+        self,
+        species: str,
+        variant_ids: List[str],
+        **options: Any,
+    ) -> Dict[str, Any]:
         """POST vep/{species}/id - Batch variant ID annotation"""
         # Validate inputs
         species = self.validator.validate_species(species)
@@ -373,7 +389,7 @@ class Bridge:
 
     # VEP Region Endpoints
     async def vep_region_single(
-        self, species: str, region: str, allele: str, **options
+        self, species: str, region: str, allele: str, **options: Any
     ) -> Dict[str, Any]:
         """GET vep/{species}/region/{region}/{allele}/ - Single region annotation"""
         # Validate inputs
@@ -387,7 +403,9 @@ class Bridge:
 
         return await self._make_request("GET", url)
 
-    async def vep_region_batch(self, species: str, regions: List[str], **options) -> Dict[str, Any]:
+    async def vep_region_batch(
+        self, species: str, regions: List[str], **options: Any
+    ) -> Dict[str, Any]:
         """POST vep/{species}/region - Batch region annotation"""
         # Validate inputs
         species = self.validator.validate_species(species)
@@ -404,19 +422,19 @@ class Bridge:
         payload = {"variants": validated_regions}
         return await self._make_request("POST", url, json=payload)
 
-    # Utility methods
+    # Other Endpoints
     async def get_vep_species(self) -> Dict[str, Any]:
-        """Get available species for VEP annotation"""
+        """GET /info/species - Get available VEP species"""
         url = f"{self.config.ensembl_base_url}/info/species"
         return await self._make_request("GET", url)
 
     async def get_consequence_types(self) -> Dict[str, Any]:
-        """Get available VEP consequence types and descriptions"""
+        """GET /info/variation/consequence_types - Get available consequence types"""
         url = f"{self.config.ensembl_base_url}/info/variation/consequence_types"
         return await self._make_request("GET", url)
 
     async def get_assembly_info(self, species: str) -> Dict[str, Any]:
-        """Get genome assembly information for a species"""
+        """GET /info/assembly/{species} - Get genome assembly information for a species"""
         species = self.validator.validate_species(species)
         url = f"{self.config.ensembl_base_url}/info/assembly/{species}"
         return await self._make_request("GET", url)

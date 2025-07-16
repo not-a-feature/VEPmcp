@@ -57,7 +57,7 @@ def load_config(config_path: Optional[str]) -> Config:
     return Config()
 
 
-async def test_connection():
+async def test_connection() -> None:
     """Test connection to Ensembl VEP API"""
     print("Testing connection to Ensembl VEP API...")
 
@@ -79,7 +79,7 @@ async def test_connection():
         sys.exit(1)
 
 
-async def test_mode():
+async def test_mode() -> None:
     """Run the server in test mode with sample requests."""
     print("Running VEP MCP server in test mode...")
     print("This will test the server with sample requests without requiring an MCP client.")
