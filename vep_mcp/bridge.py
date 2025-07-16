@@ -82,21 +82,32 @@ class VEPValidator:
 
     @staticmethod
     def validate_hgvs_notation(hgvs: str) -> str:
-        """Validate HGVS notation format"""
+        """Validate HGVS notation format including SPDI"""
         if not hgvs:
             raise ValueError("HGVS notation cannot be empty")
 
-        # Basic HGVS patterns (simplified validation)
+        # HGVS patterns: coding/genomic/protein substitutions, indels, duplications, rs IDs, and SPDI
         patterns = [
-            r"^[A-Z]+\d+\.\d+:[cgmnpr]\.\d+[ACGT]>[ACGT]$",  # Basic substitution
-            r"^[A-Z]+\d+\.\d+:[cgmnpr]\.\d+[_\-]\d+del$",  # Deletion
-            r"^[A-Z]+\d+\.\d+:[cgmnpr]\.\d+[_\-]\d+ins[ACGT]+$",  # Insertion
-            r"^[A-Z]+\d+\.\d+:[cgmnpr]\.\d+[_\-]\d+dup$",  # Duplication
-            r"^rs\d+$",  # Allow rs numbers
+            # Traditional HGVS patterns
+            r"^[A-Za-z0-9_.]+:[cgmnpr]\.\d+[ACGT]>[ACGT]$",  # Substitution, e.g., ENST..:c.803C>T
+            r"^[A-Za-z0-9_.]+:[cgmnpr]\.\d+_\d+del(?:[ACGT]+)?$",  # Deletion, e.g., c.1431_1433del or delTTC
+            r"^[A-Za-z0-9_.]+:[cgmnpr]\.\d+_\d+ins[ACGT]+$",  # Insertion, e.g., insATG
+            r"^[A-Za-z0-9_.]+:[cgmnpr]\.\d+_\d+dup(?:[ACGT]+)?$",  # Duplication, e.g., dup or dupTTC
+            r"^[A-Za-z0-9_.]+:p\.[A-Z][a-z]{2}\d+[A-Z][a-z]{2}$",  # Protein, e.g., p.Tyr124Cys
+            r"^[A-Za-z0-9_.]+:p\.[A-Z][a-z]{2}\d+\*$",  # Stop codon, e.g., p.Gln137Ter or p.Gln137*
+            # Genomic coordinate patterns (simplified HGVS)
+            r"^(?:\d+|X|Y|MT):g\.\d+[ACGT]>[ACGT]$",  # Genomic substitution, e.g., 17:g.41276107A>C
+            r"^(?:\d+|X|Y|MT):g\.\d+_\d+del(?:[ACGT]+)?$",  # Genomic deletion
+            r"^(?:\d+|X|Y|MT):g\.\d+_\d+ins[ACGT]+$",  # Genomic insertion
+            # SPDI notation (Sequence:Position:Deletion:Insertion)
+            r"^[A-Za-z0-9_.]+:\d+:[ACGT]*:[ACGT]*$",  # SPDI format, e.g., NC_000016.10:68684738:G:A
+            r"^(?:\d+|X|Y|MT):\d+:\d*:[ACGT]*$",  # Simplified SPDI with chromosome, e.g., 16:68684738:2:AC
+            # Variant IDs
+            r"^rs\d+$",  # dbSNP ID
         ]
 
         if not any(re.match(pattern, hgvs, re.IGNORECASE) for pattern in patterns):
-            logger.warning(f"HGVS notation may be invalid: {hgvs}")
+            raise ValueError(f"Invalid HGVS notation: {hgvs}")
 
         return hgvs
 
@@ -121,23 +132,46 @@ class VEPValidator:
 
     @staticmethod
     def validate_genomic_region(region: str) -> str:
-        """Validate genomic region format for VEP API"""
+        """
+        Validate genomic region format for VEP API.
+
+        Supported formats for single region queries:
+        - chr:pos (e.g., "17:41276107")
+        - chr:start-end (e.g., "17:41276106-41276107")
+        - chr:pos:ref/alt (e.g., "17:41276107:A/C")
+
+        Supported formats for BATCH processing:
+        - VCF format: "CHR POS ID REF ALT" (e.g., "1 230710048 . A G")
+          This is the REQUIRED format for vep_region_batch!
+        - SPDI format: "CHR:POS:DEL:INS" (e.g., "17:41276106::T")
+
+        IMPORTANT: The colon-separated format (chr:pos:ref/alt) does NOT work for batch
+        processing. You MUST use space-separated VCF format for batch operations.
+        """
         if not region:
             raise ValueError("Genomic region cannot be empty")
 
-        # Patterns for different region formats supported by VEP
+        # Patterns for region formats that work with VEP API
         patterns = [
-            r"^(\d+|X|Y|MT):\d+:[ACGT\-]+/[ACGT\-]+$",  # chr:pos:ref/alt (e.g., 1:230710048:A/G)
-            r"^(\d+|X|Y|MT):\d+\-\d+$",  # chr:start-end (e.g., 1:230710048-230710049)
-            r"^(\d+|X|Y|MT):\d+\-\d+:\d+$",  # chr:start-end:strand (e.g., 9:22125503-22125502:1)
-            r"^(\d+|X|Y|MT):\d+$",  # chr:pos (e.g., 1:230710048)
-            r"^(\d+|X|Y|MT):\d+\-\d+:[ACGT\-]+/[ACGT\-]+$",  # chr:start-end:ref/alt (e.g., 1:1-100:A/G)
-            r"^(\d+|X|Y|MT):\d+\-\d+:\d+/[ACGT\-]+$",  # chr:start-end:strand/allele (e.g., 9:22125503-22125502:1/C)
-            r"^(\d+|X|Y|MT):\d+\-\d+/[ACGT\-]+$",  # chr:start-end/allele (e.g., 21:26960070-26960071/G)
+            # Single position formats (for GET requests)
+            r"^(?:\d+|X|Y|MT):\d+$",  # chr:pos, e.g., 1:230710048
+            r"^(?:\d+|X|Y|MT):\d+-\d+$",  # chr:start-end, e.g., 1:1000-2000
+            r"^(?:\d+|X|Y|MT):\d+:[ACGT]/[ACGT]$",  # chr:pos:ref/alt, e.g., 1:230710048:A/G
+            r"^(?:\d+|X|Y|MT):\d+-\d+:[ACGT]/[ACGT]$",  # chr:start-end:ref/alt
+            r"^(?:\d+|X|Y|MT):\d+:[ACGT-]+/[ACGT-]+$",  # chr:pos:ref/alt with indels
+            # VCF format for POST batch requests - REQUIRED FORMAT FOR BATCH
+            r"^(?:\d+|X|Y|MT)\s+\d+\s+[.\w-]+\s+[ACGT-]+\s+[ACGT-]+(?:\s+.*)?$",  # VCF: CHR POS ID REF ALT
+            # SPDI notation formats
+            r"^[A-Za-z0-9_.]+:\d+:[ACGT]*:[ACGT]*$",  # Full SPDI format, e.g., NC_000016.10:68684738:G:A
+            r"^(?:\d+|X|Y|MT):\d+:[ACGT]*:[ACGT]+$",  # SPDI with chromosome, e.g., 17:41276106::T
+            r"^(?:\d+|X|Y|MT):\d+:\d+:[ACGT]+$",  # SPDI with numeric deletion length
         ]
 
         if not any(re.match(pattern, region, re.IGNORECASE) for pattern in patterns):
-            raise ValueError(f"Invalid genomic region format: {region}")
+            raise ValueError(
+                f"Invalid genomic region format: {region}. "
+                f"For batch operations, use VCF format: 'CHR POS ID REF ALT' (e.g., '1 230710048 . A G')"
+            )
 
         return region
 

@@ -162,7 +162,7 @@ class MCPServer:
             # HGVS Tools
             {
                 "name": "vep_hgvs_single",
-                "description": "Annotate a single variant using HGVS notation (e.g., ENST00000366667:c.803C>T)",
+                "description": "Annotate a single variant using HGVS notation (genomic g., coding c., protein p.)",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -173,7 +173,8 @@ class MCPServer:
                         },
                         "hgvs_notation": {
                             "type": "string",
-                            "description": "HGVS notation (e.g., 'ENST00000366667:c.803C>T')",
+                            "description": "HGVS notation (e.g., 'ENST00000366667:c.803C>T', '17:g.41276107A>C', 'ENSP00000401091.1:p.Tyr124Cys')",
+                            "pattern": "^([A-Za-z0-9_.]+:[cgmnpr]\\.\\d+[ACGT]>[ACGT]|rs\\d+|[A-Za-z0-9_.]+:p\\.[A-Z][a-z]{2}\\d+[A-Z][a-z]{2})$",
                         },
                         **common_vep_params,
                     },
@@ -194,7 +195,7 @@ class MCPServer:
                         "hgvs_notations": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "List of HGVS notations (e.g., ['ENST00000366667:c.803C>T', 'ENST00000003084:c.1431_1433delTTC'])",
+                            "description": "List of HGVS notations (e.g., ['ENST00000366667:c.803C>T', '9:g.22125504G>C'])",
                         },
                         **{
                             k: v
@@ -219,7 +220,7 @@ class MCPServer:
             # ID Tools
             {
                 "name": "vep_id_single",
-                "description": "Annotate a variant using variant identifier (e.g., rs1234567)",
+                "description": "Annotate a single variant using an identifier (e.g., rs1234567, COSM476)",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -230,7 +231,8 @@ class MCPServer:
                         },
                         "variant_id": {
                             "type": "string",
-                            "description": "Variant identifier (e.g., 'rs56116432', 'COSM476')",
+                            "description": "Variant identifier (rs or COSM/COSV/CM IDs)",
+                            "pattern": "^(rs\\d+|COSM\\d+|COSV\\d+|CM\\d+)$",
                         },
                         **common_vep_params,
                     },
@@ -239,7 +241,7 @@ class MCPServer:
             },
             {
                 "name": "vep_id_batch",
-                "description": "Annotate multiple variants using variant identifiers in batch",
+                "description": "Annotate multiple variants using identifiers in batch",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -250,7 +252,10 @@ class MCPServer:
                         },
                         "variant_ids": {
                             "type": "array",
-                            "items": {"type": "string"},
+                            "items": {
+                                "type": "string",
+                                "pattern": "^(rs\\d+|COSM\\d+|COSV\\d+|CM\\d+)$",
+                            },
                             "description": "List of variant identifiers (e.g., ['rs56116432', 'COSM476'])",
                         },
                         **{
@@ -276,7 +281,7 @@ class MCPServer:
             # Region Tools
             {
                 "name": "vep_region_single",
-                "description": "Annotate a variant using genomic coordinates (e.g., 1:230710048:A/G)",
+                "description": "Annotate a variant using genomic region and allele",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -287,11 +292,13 @@ class MCPServer:
                         },
                         "region": {
                             "type": "string",
-                            "description": "Genomic region (e.g., '1:230710048', '9:22125503-22125502')",
+                            "description": "Genomic region (pos or range, optionally with allele)",
+                            "pattern": "^(?:\\d+|X|Y|MT):\\d+(?:-\\d+)?(?:\\:[ACGT]\\/[ACGT])?$",
                         },
                         "allele": {
                             "type": "string",
-                            "description": "Allele (e.g., 'G', 'C')",
+                            "description": "Allele base (A,C,G,T)",
+                            "pattern": "^[ACGT]$",
                         },
                         **common_vep_params,
                     },
@@ -311,8 +318,11 @@ class MCPServer:
                         },
                         "regions": {
                             "type": "array",
-                            "items": {"type": "string"},
-                            "description": "List of genomic regions (e.g., ['1:230710048:A/G', '2:158267250:T/C'])",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^(?:\\d+|X|Y|MT)\\s+\\d+\\s+[.\\w-]+\\s+[ACGT-]+\\s+[ACGT-]+(?:\\s+.*)?$",
+                            },
+                            "description": "List of variants in VCF format (e.g., ['1 230710048 . A G', '9 22125504 . G C']). Format: 'CHR POS ID REF ALT' where CHR=chromosome, POS=position, ID=identifier (use '.' if unknown), REF=reference allele, ALT=alternate allele.",
                         },
                         **{
                             k: v
@@ -353,8 +363,9 @@ class MCPServer:
                     "properties": {
                         "species": {
                             "type": "string",
-                            "description": "Species name (e.g., 'homo_sapiens', 'mus_musculus')",
+                            "description": "Species name (lowercase, alphanumeric or underscores)",
                             "default": "homo_sapiens",
+                            "pattern": "^[a-z0-9_]+$",
                         },
                     },
                     "required": ["species"],
