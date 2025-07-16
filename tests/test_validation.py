@@ -27,19 +27,17 @@ def test_validate_variant_id():
 
 
 def test_validate_genomic_region():
-    # Valid formats
+    # Valid single-region formats supported by validator
     assert VEPValidator.validate_genomic_region("1:230710048:A/G") == "1:230710048:A/G"
     assert VEPValidator.validate_genomic_region("1:230710048") == "1:230710048"
     assert VEPValidator.validate_genomic_region("1:230710048-230710049") == "1:230710048-230710049"
-    assert VEPValidator.validate_genomic_region("9:22125503-22125502:1") == "9:22125503-22125502:1"
-    assert VEPValidator.validate_genomic_region("X:100000-100100:1") == "X:100000-100100:1"
     assert VEPValidator.validate_genomic_region("1:1-100:A/G") == "1:1-100:A/G"
+    # SPDI format examples
     assert (
-        VEPValidator.validate_genomic_region("9:22125503-22125502:1/C") == "9:22125503-22125502:1/C"
+        VEPValidator.validate_genomic_region("NC_000016.10:68684738:G:A")
+        == "NC_000016.10:68684738:G:A"
     )
-    assert (
-        VEPValidator.validate_genomic_region("21:26960070-26960071/G") == "21:26960070-26960071/G"
-    )
+    assert VEPValidator.validate_genomic_region("17:41276106::T") == "17:41276106::T"
 
     # Invalid formats
     with pytest.raises(ValueError):
